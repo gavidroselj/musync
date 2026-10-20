@@ -8,7 +8,7 @@ import (
 	"github.com/lrstanley/go-ytdlp"
 )
 
-func DonwloadDependencies(logger *slog.Logger) {
+func DownloadDependencies(logger *slog.Logger) {
 	logger.Info("Downloading yt-dlp and dependencies...")
 
 	logger.Debug("Downloading yt-dlp...")
