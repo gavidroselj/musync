@@ -25,7 +25,7 @@ func main() {
 	logLevel.Set(conf.LogLevel)
 	logger.Debug("Successfully loaded config", "conf", conf)
 
-	dependencies.DonwloadDependencies(logger)
+	dependencies.DownloadDependencies(logger)
 
 	logger.Info("muSync started", "version", ytdlp.Version, "logLevel", logLevel)
 

@@ -1,6 +1,6 @@
 module github.com/gavidroselj/musync
 
-go 1.27.1
+go 1.27.3
 
 require (
 	github.com/lrstanley/go-ytdlp v1.5.4
