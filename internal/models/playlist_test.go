@@ -1,4 +1,4 @@
-package downloader
+package models
 
 import (
 	"log/slog"

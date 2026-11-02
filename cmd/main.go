@@ -3,11 +3,10 @@ package main
 import (
 	"log/slog"
 	"os"
-	"time"
 
 	"github.com/gavidroselj/musync/dependencies"
 	"github.com/gavidroselj/musync/internal/config"
-	"github.com/gavidroselj/musync/internal/downloader"
+	"github.com/gavidroselj/musync/internal/processor"
 	"github.com/lrstanley/go-ytdlp"
 )
 
@@ -27,29 +26,14 @@ func main() {
 
 	dependencies.DownloadDependencies(logger)
 
-	logger.Info("muSync started", "version", ytdlp.Version, "logLevel", logLevel)
+	logger.Info("muSync starting", "version", ytdlp.Version, "logLevel", logLevel)
 
-	var playlists []*downloader.Playlist
-
-	for _, confEntry := range conf.Playlists {
-		newPlaylist := downloader.NewPlaylist(conf, confEntry, logger)
-		newPlaylist.SyncFromDisk()
-
-		playlists = append(playlists, newPlaylist)
+	processor := processor.NewProcessor(conf, logger)
+	err = processor.Init()
+	if err != nil {
+		logger.Error("Startup failed to init processor", "err", err)
+		os.Exit(1)
 	}
 
-	for {
-		for _, playlist := range playlists {
-			if playlist.LastUpdate.Before(time.Now().Add(-time.Hour * 6)) {
-				playlist.Update()
-				break
-			}
-
-			downloaded := playlist.ProcessQueue()
-			if downloaded {
-				break
-			}
-		}
-		time.Sleep(time.Minute)
-	}
+	processor.Run()
 }

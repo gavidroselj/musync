@@ -10,10 +10,12 @@ import (
 const ConfigPath = "config.yml"
 
 type Config struct {
-	LogLevel           slog.Level      `yaml:"log_level"`
-	MusicFolder        string          `yaml:"music_folder"`
-	Playlists          []PlaylistEntry `yaml:"playlists"`
-	DeletionIterations int             `yaml:"deletion_iterations"`
+	LogLevel    slog.Level      `yaml:"log_level"`
+	MusicFolder string          `yaml:"music_folder"`
+	Playlists   []PlaylistEntry `yaml:"playlists"`
+
+	// TODO: Remove or alter
+	DeletionIterations int `yaml:"deletion_iterations"`
 }
 
 type PlaylistEntry struct {
@@ -22,17 +24,17 @@ type PlaylistEntry struct {
 	Subfolder string `yaml:"subfolder"`
 }
 
-func LoadConfig(path string) (Config, error) {
+func LoadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return Config{}, err
+		return &Config{}, err
 	}
 
 	conf := Config{}
 	err = yaml.Unmarshal(data, &conf)
 	if err != nil {
-		return Config{}, err
+		return &Config{}, err
 	}
 
-	return conf, nil
+	return &conf, nil
 }
