@@ -3,7 +3,7 @@ module github.com/gavidroselj/musync
 go 1.27.3
 
 require (
-	github.com/lrstanley/go-ytdlp v1.5.5
+	github.com/lrstanley/go-ytdlp v1.5.6
 	github.com/sebdah/goldie/v2 v2.8.0
 	gopkg.in/yaml.v3 v3.0.1
 )
