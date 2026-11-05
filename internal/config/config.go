@@ -10,18 +10,14 @@ import (
 const ConfigPath = "config.yml"
 
 type Config struct {
-	LogLevel    slog.Level      `yaml:"log_level"`
-	MusicFolder string          `yaml:"music_folder"`
-	Playlists   []PlaylistEntry `yaml:"playlists"`
-
-	// TODO: Remove or alter
-	DeletionIterations int `yaml:"deletion_iterations"`
+	LogLevel  slog.Level      `yaml:"log_level"`
+	Playlists []PlaylistEntry `yaml:"playlists"`
 }
 
 type PlaylistEntry struct {
-	Name      string `yaml:"name"`
-	URL       string `yaml:"url"`
-	Subfolder string `yaml:"subfolder"`
+	Name string `yaml:"name"`
+	URL  string `yaml:"url"`
+	Path string `yaml:"path"`
 }
 
 func LoadConfig(path string) (*Config, error) {

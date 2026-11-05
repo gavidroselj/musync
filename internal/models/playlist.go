@@ -2,7 +2,6 @@ package models
 
 import (
 	"log/slog"
-	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -29,7 +28,7 @@ func NewPlaylist(c *config.Config, pe config.PlaylistEntry, logger *slog.Logger)
 	playlist := Playlist{
 		Name:       pe.Name,
 		URL:        pe.URL,
-		Folder:     path.Join(c.MusicFolder, pe.Subfolder),
+		Folder:     pe.Path,
 		Songs:      []*Song{},
 		LastUpdate: time.UnixMilli(0),
 
@@ -130,9 +129,8 @@ func (p *Playlist) updateTrackedSongs(newSongs []Song) {
 		}
 	}
 
-	// handle deleted songs
-	// TODO: Validate that this does not cause a problem with indexing
-	for i, song := range p.Songs {
+	// Delete songs on disk
+	for _, song := range p.Songs {
 		if !slices.ContainsFunc(newSongs, func(a Song) bool {
 			return song.ID == a.ID
 		}) {
@@ -140,7 +138,6 @@ func (p *Playlist) updateTrackedSongs(newSongs []Song) {
 
 			if shouldDelete {
 				p.fileManager.DeleteSong(song)
-				slices.Delete(p.Songs, i, i+1)
 				deletedSongCount++
 			} else {
 				song.PlaylistState = SongPlaylistStateMissing
@@ -148,6 +145,11 @@ func (p *Playlist) updateTrackedSongs(newSongs []Song) {
 			}
 		}
 	}
+
+	// And remove them from tracking
+	p.Songs = slices.DeleteFunc(p.Songs, func(song *Song) bool {
+		return song.ShouldDelete(0)
+	})
 
 	p.logger.Debug("Playlist updated", "newSongs", newSongCount, "existingSongs", existingSongCount, "awaitingDeletion", awaitingDeletionCount, "deletedSongs", deletedSongCount)
 }
@@ -164,7 +166,6 @@ func (p *Playlist) getNextDownload() *Song {
 }
 
 // Download one queue entry if available, return true if download occured
-// TODO: return whether download was attempted for backoff tracking
 func (p *Playlist) DownloadIfAvailable() ProcessResult {
 	p.logger.Debug("Attempting download...")
 

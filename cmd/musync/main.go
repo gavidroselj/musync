@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/gavidroselj/musync/dependencies"
 	"github.com/gavidroselj/musync/internal/config"
+	"github.com/gavidroselj/musync/internal/dependencies"
 	"github.com/gavidroselj/musync/internal/processor"
 	"github.com/lrstanley/go-ytdlp"
 )
