@@ -1,6 +1,7 @@
 music
 
 config.yml
+state.json
 
 # IDE
 .vscode/

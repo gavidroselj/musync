@@ -16,9 +16,9 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
 
-	conf, err := config.LoadConfig(config.ConfigPath)
+	conf, err := config.LoadConfig()
 	if err != nil {
-		logger.Error("Failed to load config", "path", config.ConfigPath, "err", err)
+		logger.Error("Failed to load config", "path", config.ConfigFilePath(), "err", err)
 		os.Exit(1)
 	}
 	logLevel.Set(conf.LogLevel)

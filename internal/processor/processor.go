@@ -12,8 +12,6 @@ import (
 	"github.com/gavidroselj/musync/internal/models"
 )
 
-const stateFile = "state.json"
-
 type Processor struct {
 	playlists []*models.Playlist
 
@@ -110,12 +108,15 @@ func (p *Processor) sleepDuration() time.Duration {
 }
 
 func (p *Processor) loadState() error {
-	_, err := os.Stat(stateFile)
+	filePath := config.StateFilePath()
+
+	_, err := os.Stat(filePath)
 	if err != nil {
 		p.playlists = []*models.Playlist{}
+		return nil
 	}
 
-	data, err := os.ReadFile(stateFile)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
@@ -129,12 +130,14 @@ func (p *Processor) loadState() error {
 }
 
 func (p *Processor) saveState() error {
+	filePath := config.StateFilePath()
+
 	data, err := json.Marshal(p.playlists, jsontext.Multiline(true))
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(stateFile, data, 0644)
+	err = os.WriteFile(filePath, data, 0644)
 	if err != nil {
 		return err
 	}

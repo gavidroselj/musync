@@ -3,11 +3,16 @@ package config
 import (
 	"log/slog"
 	"os"
+	"path"
 
 	"gopkg.in/yaml.v3"
 )
 
-const ConfigPath = "config.yml"
+const (
+	workDir    = "musync"
+	configFile = "config.yml"
+	stateFile  = "state.json"
+)
 
 type Config struct {
 	LogLevel  slog.Level      `yaml:"log_level"`
@@ -20,8 +25,10 @@ type PlaylistEntry struct {
 	Path string `yaml:"path"`
 }
 
-func LoadConfig(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+func LoadConfig() (*Config, error) {
+	filePath := ConfigFilePath()
+
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return &Config{}, err
 	}
@@ -33,4 +40,12 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return &conf, nil
+}
+
+func ConfigFilePath() string {
+	return path.Join(workDir, configFile)
+}
+
+func StateFilePath() string {
+	return path.Join(workDir, stateFile)
 }

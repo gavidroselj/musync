@@ -2,7 +2,6 @@ package models
 
 import (
 	"log/slog"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -10,8 +9,6 @@ import (
 	"github.com/gavidroselj/musync/internal/config"
 	"github.com/gavidroselj/musync/internal/downloader"
 )
-
-var fileIDRegex = regexp.MustCompile(`.*\[(.*)\].mp3`)
 
 type Playlist struct {
 	Name       string    `json:"name"`
@@ -137,7 +134,11 @@ func (p *Playlist) updateTrackedSongs(newSongs []Song) {
 			shouldDelete := song.ShouldDelete(0.1) // TODO: Make this dynamic based on how many songs were deleted.
 
 			if shouldDelete {
-				p.fileManager.DeleteSong(song)
+				err := p.fileManager.DeleteSong(song)
+				if err != nil {
+					p.logger.Error("Failed to delete song", "song", song, "err", err)
+				}
+
 				deletedSongCount++
 			} else {
 				song.PlaylistState = SongPlaylistStateMissing

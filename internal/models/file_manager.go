@@ -44,11 +44,7 @@ func (fm *FileManager) DownloadSong(song *Song) error {
 
 func (fm *FileManager) FileExists(filePath string) bool {
 	_, err := os.Stat(filePath)
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 func (fm *FileManager) DeleteSong(song *Song) error {
