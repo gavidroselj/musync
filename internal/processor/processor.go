@@ -44,6 +44,10 @@ func (p *Processor) Init() error {
 		})
 	})
 
+	for _, playlist := range p.playlists {
+		playlist.SetupLogger(p.logger)
+	}
+
 	for _, confEntry := range p.conf.Playlists {
 		// Skip init if state contains playlist
 		if slices.ContainsFunc(p.playlists, func(playlist *models.Playlist) bool {
@@ -84,6 +88,13 @@ func (p *Processor) Run() {
 			p.failureBackoffCount++
 		}
 
+		if res != models.ProcessResultNothing {
+			err := p.saveState()
+			if err != nil {
+				p.logger.Error("Failed to save state", "err", err)
+			}
+		}
+
 		if !skipSleep {
 			time.Sleep(p.sleepDuration())
 		}
@@ -112,7 +123,6 @@ func (p *Processor) loadState() error {
 
 	_, err := os.Stat(filePath)
 	if err != nil {
-		p.playlists = []*models.Playlist{}
 		return nil
 	}
 
@@ -121,7 +131,7 @@ func (p *Processor) loadState() error {
 		return err
 	}
 
-	err = json.Unmarshal(data, p.playlists)
+	err = json.Unmarshal(data, &p.playlists)
 	if err != nil {
 		return err
 	}

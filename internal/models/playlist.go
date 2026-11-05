@@ -22,20 +22,20 @@ type Playlist struct {
 }
 
 func NewPlaylist(c *config.Config, pe config.PlaylistEntry, logger *slog.Logger) *Playlist {
-	playlist := Playlist{
+	playlist := &Playlist{
 		Name:       pe.Name,
 		URL:        pe.URL,
 		Folder:     pe.Path,
 		Songs:      []*Song{},
 		LastUpdate: time.UnixMilli(0),
-
-		logger: logger.With("playlist", pe.Name),
 	}
+
+	playlist.SetupLogger(logger)
 
 	playlist.fileManager = NewFileManager(playlist.logger, playlist.Folder)
 
 	playlist.validateFiles()
-	return &playlist
+	return playlist
 }
 
 type ProcessResult string
@@ -70,6 +70,10 @@ func (p *Playlist) Refresh() {
 
 	p.updateTrackedSongs(newSongs)
 	p.LastUpdate = time.Now()
+}
+
+func (p *Playlist) SetupLogger(logger *slog.Logger) {
+	p.logger = logger.With("playlist", p.Name)
 }
 
 // Get song list from URL
