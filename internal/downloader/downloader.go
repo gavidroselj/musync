@@ -12,6 +12,7 @@ import (
 const (
 	playlistRefreshTimeout = time.Second * 30
 	songDownloadTimeout    = time.Second * 30
+	progressFuncInterval   = time.Second
 )
 
 func getContext(duration time.Duration) (context.Context, context.CancelFunc) {
@@ -40,7 +41,7 @@ func SongDownloader(logger *slog.Logger) (*ytdlp.Command, context.Context, conte
 		AbortOnError().
 		NoPart().
 		SponsorblockRemove("sponsor,intro,outro,selfpromo,preview,interaction,music_offtopic").
-		ProgressFunc(time.Millisecond*200, func(update ytdlp.ProgressUpdate) {
+		ProgressFunc(progressFuncInterval, func(update ytdlp.ProgressUpdate) {
 			logger.Debug("Downloading...", "progress", fmt.Sprintf("%.1f%%", update.Percent()), "ETA", update.ETA())
 		})
 

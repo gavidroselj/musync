@@ -9,6 +9,8 @@ import (
 	"github.com/gavidroselj/musync/internal/downloader"
 )
 
+const songFileExtension = "mp3"
+
 // FileManager manages the actual song files on disk, as directed by playlist it's tied to.
 // It also manages files on remote filesystems, such as WebDAV.
 type FileManager struct {
@@ -37,7 +39,7 @@ func (fm *FileManager) DownloadSong(song *Song) error {
 
 	// TODO: upload to WebDAV if configured
 
-	song.FileName = fileName
+	song.FileName = fmt.Sprintf("%s.%s", fileName, songFileExtension)
 
 	return nil
 }
@@ -47,8 +49,12 @@ func (fm *FileManager) FileExists(filePath string) bool {
 	return err == nil
 }
 
+func (fm *FileManager) GetSongPath(song *Song) string {
+	return path.Join(fm.folder, song.FileName)
+}
+
 func (fm *FileManager) DeleteSong(song *Song) error {
-	filePath := path.Join(fm.folder, song.FileName)
+	filePath := fm.GetSongPath(song)
 	exists := fm.FileExists(filePath)
 	if !exists {
 		fm.logger.Warn("Song for deletion did not exist on disk, this should be fine", "song", song, "filePath", filePath)

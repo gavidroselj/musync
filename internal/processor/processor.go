@@ -44,20 +44,19 @@ func (p *Processor) Init() error {
 		})
 	})
 
-	for _, playlist := range p.playlists {
-		playlist.SetupLogger(p.logger)
-	}
-
 	for _, confEntry := range p.conf.Playlists {
-		// Skip init if state contains playlist
-		if slices.ContainsFunc(p.playlists, func(playlist *models.Playlist) bool {
+		// Init playlist with state tracked
+		idx := slices.IndexFunc(p.playlists, func(playlist *models.Playlist) bool {
 			return playlist.Name == confEntry.Name
-		}) {
+		})
+		if idx != -1 {
+			playlist := p.playlists[idx]
+			playlist.ApplyConfig(p.logger, confEntry)
 			continue
 		}
 
 		// Init newly added playlists to state
-		newPlaylist := models.NewPlaylist(p.conf, confEntry, p.logger)
+		newPlaylist := models.NewPlaylist(p.logger, confEntry)
 
 		p.playlists = append(p.playlists, newPlaylist)
 	}
@@ -72,40 +71,58 @@ func (p *Processor) Init() error {
 
 func (p *Processor) Run() {
 	for {
-		skipSleep := false
-
-		playlist := p.nextPlaylist()
-
-		res := playlist.Process()
-		switch res {
-		case models.ProcessResultNothing:
-			skipSleep = true
-
-		case models.ProcessResultDownload, models.ProcessResultRefresh:
-			p.failureBackoffCount = 0
-
-		case models.ProcessResultError:
-			p.failureBackoffCount++
-		}
-
-		if res != models.ProcessResultNothing {
-			err := p.saveState()
-			if err != nil {
-				p.logger.Error("Failed to save state", "err", err)
-			}
-		}
-
-		if !skipSleep {
-			time.Sleep(p.sleepDuration())
-		}
+		p.runOnce()
 	}
 }
 
-func (p *Processor) nextPlaylist() *models.Playlist {
-	selected := p.playlists[p.roundRobinIndex]
-	p.roundRobinIndex = (p.roundRobinIndex + 1) % len(p.playlists)
+func (p *Processor) runOnce() {
+	skipSleep := false
 
-	return selected
+	defer func() {
+		if !skipSleep {
+			time.Sleep(p.sleepDuration())
+		}
+	}()
+
+	playlist := p.nextPlaylist()
+	if playlist == nil {
+		p.logger.Debug("No playlists need actions, skipping")
+		return
+	}
+
+	res := playlist.Process()
+	switch res {
+	case models.ProcessResultNothing:
+		skipSleep = true
+
+	case models.ProcessResultDownload, models.ProcessResultRefresh:
+		p.failureBackoffCount = 0
+
+	case models.ProcessResultError:
+		p.failureBackoffCount++
+	}
+
+	if res != models.ProcessResultNothing {
+		err := p.saveState()
+		if err != nil {
+			p.logger.Error("Failed to save state", "err", err)
+		}
+	}
+
+}
+
+func (p *Processor) nextPlaylist() *models.Playlist {
+	// Rotate through all playlists from p.roundRobinIndex
+	for range p.playlists {
+		selected := p.playlists[p.roundRobinIndex]
+		p.roundRobinIndex = (p.roundRobinIndex + 1) % len(p.playlists)
+
+		if selected.NeedsProcessing() {
+			return selected
+		}
+	}
+
+	return nil
 }
 
 func (p *Processor) sleepDuration() time.Duration {

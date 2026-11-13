@@ -14,27 +14,22 @@ type Playlist struct {
 	Name       string    `json:"name"`
 	URL        string    `json:"url"`
 	Songs      []*Song   `json:"songs"`
-	Folder     string    `json:"folder"`
+	Path       string    `json:"path"`
 	LastUpdate time.Time `json:"last_update"`
 
 	fileManager *FileManager
 	logger      *slog.Logger
 }
 
-func NewPlaylist(c *config.Config, pe config.PlaylistEntry, logger *slog.Logger) *Playlist {
+func NewPlaylist(logger *slog.Logger, pe config.PlaylistEntry) *Playlist {
 	playlist := &Playlist{
 		Name:       pe.Name,
-		URL:        pe.URL,
-		Folder:     pe.Path,
 		Songs:      []*Song{},
 		LastUpdate: time.UnixMilli(0),
 	}
 
-	playlist.SetupLogger(logger)
+	playlist.ApplyConfig(logger, pe)
 
-	playlist.fileManager = NewFileManager(playlist.logger, playlist.Folder)
-
-	playlist.validateFiles()
 	return playlist
 }
 
@@ -48,12 +43,28 @@ const (
 )
 
 func (p *Playlist) Process() ProcessResult {
-	if p.LastUpdate.Before(time.Now().Add(-time.Hour * 6)) {
+	if p.needsRefresh() {
 		p.Refresh()
 		return ProcessResultRefresh
 	}
 
-	return p.DownloadIfAvailable()
+	return p.downloadIfAvailable()
+}
+
+func (p *Playlist) NeedsProcessing() bool {
+	if p.needsRefresh() {
+		return true
+	}
+
+	if p.getNextDownload() != nil {
+		return true
+	}
+
+	return false
+}
+
+func (p *Playlist) needsRefresh() bool {
+	return p.LastUpdate.Before(time.Now().Add(-time.Hour * 6))
 }
 
 func (p *Playlist) Refresh() {
@@ -68,8 +79,15 @@ func (p *Playlist) Refresh() {
 	p.LastUpdate = time.Now()
 }
 
-func (p *Playlist) SetupLogger(logger *slog.Logger) {
+func (p *Playlist) ApplyConfig(logger *slog.Logger, pe config.PlaylistEntry) {
+	p.URL = pe.URL
+	p.Path = pe.Path
+
 	p.logger = logger.With("playlist", p.Name)
+
+	p.fileManager = NewFileManager(p.logger, p.Path)
+
+	p.validateFiles()
 }
 
 // Get song list from URL
@@ -173,7 +191,7 @@ func (p *Playlist) getNextDownload() *Song {
 }
 
 // Download one queue entry if available, return true if download occured
-func (p *Playlist) DownloadIfAvailable() ProcessResult {
+func (p *Playlist) downloadIfAvailable() ProcessResult {
 	p.logger.Debug("Attempting download...")
 
 	targetSong := p.getNextDownload()
@@ -203,9 +221,20 @@ func (p *Playlist) DownloadIfAvailable() ProcessResult {
 
 func (p *Playlist) validateFiles() {
 	for _, song := range p.Songs {
-		if !p.fileManager.FileExists(song.FileName) {
-			p.logger.Warn("Expected file is missing", "name", song.FileName, "id", song.ID)
+		if song.DownloadState == SongDownloadStatePending ||
+			song.DownloadState == SongDownloadStateFailedRetry ||
+			song.DownloadState == SongDownloadStateFailedUnavailable {
+			// Song is not downloaded yet, skip
+			continue
+		}
+
+		path := p.fileManager.GetSongPath(song)
+		if p.fileManager.FileExists(path) {
+			song.DownloadState = SongDownloadStateSuccess
+		} else {
+			p.logger.Warn("Expected file is missing", "name", song.FileName, "id", song.ID, "path", path)
 			song.DownloadState = SongDownloadStateMissing
+			// TODO: Figure out how to handle missing files
 		}
 	}
 }
