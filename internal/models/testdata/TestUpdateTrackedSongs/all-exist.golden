@@ -1,0 +1,29 @@
+[
+	{
+		"id": "1",
+		"url": "",
+		"title": "",
+		"deletion_margin": 0,
+		"playlist_state": "OK",
+		"download_state": "",
+		"file_name": ""
+	},
+	{
+		"id": "2",
+		"url": "",
+		"title": "",
+		"deletion_margin": 0,
+		"playlist_state": "OK",
+		"download_state": "",
+		"file_name": ""
+	},
+	{
+		"id": "3",
+		"url": "",
+		"title": "",
+		"deletion_margin": 0,
+		"playlist_state": "OK",
+		"download_state": "",
+		"file_name": ""
+	}
+]

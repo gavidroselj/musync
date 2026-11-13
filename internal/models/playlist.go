@@ -58,17 +58,13 @@ func (p *Playlist) Process() ProcessResult {
 
 func (p *Playlist) Refresh() {
 	p.logger.Debug("Refreshing playlist from remote...")
-	newSongs, err := p.fetchPlaylistSongs()
+	newList, err := p.fetchPlaylistSongs()
 	if err != nil {
 		p.logger.Error("Failed to update playlist", "err", err)
 		return
 	}
-	if len(newSongs) == 0 {
-		p.logger.Debug("Refresh returned playlist of length 0, skipping")
-		return
-	}
 
-	p.updateTrackedSongs(newSongs)
+	p.updateTrackedSongs(newList)
 	p.LastUpdate = time.Now()
 }
 
@@ -108,10 +104,16 @@ func (p *Playlist) songIndex(id string) int {
 	})
 }
 
-func (p *Playlist) updateTrackedSongs(newSongs []Song) {
+func (p *Playlist) updateTrackedSongs(newList []Song) {
+	// Only allow 0 length playlists, if it had less than 5 songs before
+	if len(newList) == 0 && len(p.Songs) > 5 {
+		p.logger.Warn("Updating songs from list of length 0, rejecting")
+		return
+	}
+
 	newSongCount, existingSongCount, awaitingDeletionCount, deletedSongCount := 0, 0, 0, 0
 
-	for _, newSong := range newSongs {
+	for _, newSong := range newList {
 		songIdx := p.songIndex(newSong.ID)
 		if songIdx != -1 {
 			// song is already tracked
@@ -132,12 +134,12 @@ func (p *Playlist) updateTrackedSongs(newSongs []Song) {
 
 	// Delete songs on disk
 	for _, song := range p.Songs {
-		if !slices.ContainsFunc(newSongs, func(a Song) bool {
+		if !slices.ContainsFunc(newList, func(a Song) bool {
 			return song.ID == a.ID
 		}) {
 			shouldDelete := song.ShouldDelete(0.1) // TODO: Make this dynamic based on how many songs were deleted.
 
-			if shouldDelete {
+			if shouldDelete && p.fileManager != nil {
 				err := p.fileManager.DeleteSong(song)
 				if err != nil {
 					p.logger.Error("Failed to delete song", "song", song, "err", err)
