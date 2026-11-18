@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	workDir    = "musync"
+	workDir    = "config"
 	configFile = "config.yml"
 	stateFile  = "state.json"
 )

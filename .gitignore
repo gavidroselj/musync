@@ -1,4 +1,3 @@
-music
-
-config.yml
-state.json
+# Local testing config and state
+config/*
+music/*

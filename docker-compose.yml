@@ -4,7 +4,7 @@ services:
     restart: always
     volumes:
       # App config.yml and state.json are stored in here.
-      - /path/to/state/directory:/app/musync
+      - /path/to/config:/app/config
 
       # Recommended playlist folder setup, make sure these paths match the configured ones.
       # Relative config paths start from /app, so the path for this playlist should be either `/app/music/playlist1` or `music/playlist1`

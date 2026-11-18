@@ -12,13 +12,13 @@ The app created a `state.json` file, in which it tracks internal playlist state,
 
 Deleting the `state.json` file will cause the app to forget all downloaded files and start from scratch.
 
-Both the `config.yml` and the `state.json` files are stored in the `musync` folder, next to the executable.
+Both the `config.yml` and the `state.json` files are stored in the `config` folder, next to the executable.
 
 ### Docker
 
 This app is designed to work as a Docker container. See the provided `docker-compose.yml` for an example setup.
 
-The `/app/musync` volume mount should contain your `config.yml` file. The `state.json` file will also be created there.
+The `/app/config` volume mount should contain your `config.yml` file. The `state.json` file will also be created there.
 
 ### Other
 
