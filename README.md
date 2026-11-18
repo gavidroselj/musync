@@ -20,6 +20,8 @@ This app is designed to work as a Docker container. See the provided `docker-com
 
 The `/app/config` volume mount should contain your `config.yml` file. The `state.json` file will also be created there.
 
+The container runs as UID and GID 1000.
+
 ### Other
 
 While running this app outside a Docker container is not supported, nothing should prevent you from doing it. Read the docker setup instructions, the Dockerfile, and build the app yourself.

@@ -1,5 +1,8 @@
 ARG GO_VERSION=1.27.4
 
+ARG UID=1000
+ARG GID=1000
+
 # Build app
 
 FROM golang:${GO_VERSION} AS build
@@ -29,9 +32,18 @@ RUN go run ./cmd/download-dependencies
 FROM denoland/deno
 WORKDIR /app/
 
-# Copy cached dependencies
-COPY --from=dependencies /root/.cache /root/.cache
 
-COPY --from=build /app/musync .
+# Run as non-root user
+ARG UID
+ARG GID
+
+RUN groupadd -g $UID musync && \
+    useradd -m -u $GID -g musync musync
+USER ${UID}:${GID}
+
+# Copy cached dependencies
+COPY --chown=${UID}:${GID} --from=dependencies /root/.cache /home/musync/.cache
+
+COPY --chown=${UID}:${GID} --from=build /app/musync .
 
 CMD [ "/app/musync" ]
