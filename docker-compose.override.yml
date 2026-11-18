@@ -1,6 +1,0 @@
-services:
-  musync:
-    volumes:
-      - ./config:/app/config
-      - ./music:/app/music
-    build: .

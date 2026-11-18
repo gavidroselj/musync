@@ -1,3 +1,6 @@
 # Local testing config and state
 config/*
 music/*
+
+# Local dev files
+docker-compose.override.yml
