@@ -3,5 +3,11 @@ services:
     image: ghcr.io/gavidroselj/musync
     restart: always
     volumes:
-      - config.yml:/app/config.yml
-      - /path/to/music/storage:/app/music
+      # App config.yml and state.json are stored in here.
+      - /path/to/state/directory:/app/musync
+
+      # Recommended playlist folder setup, make sure these paths match the configured ones.
+      # Relative config paths start from /app, so the path for this playlist should be either `/app/music/playlist1` or `music/playlist1`
+      - /path/to/playlist1:/app/music/playlist1
+
+      - /path/to/playlist2:/app/music/playlist2

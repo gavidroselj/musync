@@ -1,8 +1,15 @@
+# Log level, supported values: "DEBUG" "INFO" "WARN" "ERROR"
 log_level: INFO
+
+# List of playlists to download
 playlists:
+  # Playlist name, used to identify playlist, changing this after creation will cause the playlist state to be forgotten.
   - name: Playlist1
+    # URL from which to download, only youtube was tested, all websites supported by yt-dlp might work.
     url: https://www.youtube.com/playlist?list=abcd1234
+    # Path to where audio files should be stored. This path can be absolute or relative from the dir of the executable.
     path: music/folder1
+
   - name: Playlist2
     url: https://www.youtube.com/playlist?list=efgh5678
     path: music/folder2
