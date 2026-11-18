@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/gavidroselj/musync/internal/config"
-	"github.com/gavidroselj/musync/internal/models"
+	"github.com/gavidroselj/musync/internal/core"
 )
 
 type Processor struct {
-	playlists []*models.Playlist
+	playlists []*core.Playlist
 
 	roundRobinIndex     int
 	failureBackoffCount int
@@ -38,7 +38,7 @@ func (p *Processor) Init() error {
 	}
 
 	// Delete state for non-configured playlists
-	p.playlists = slices.DeleteFunc(p.playlists, func(playlist *models.Playlist) bool {
+	p.playlists = slices.DeleteFunc(p.playlists, func(playlist *core.Playlist) bool {
 		return !slices.ContainsFunc(p.conf.Playlists, func(playlistEntry config.PlaylistEntry) bool {
 			return playlist.Name == playlistEntry.Name
 		})
@@ -46,7 +46,7 @@ func (p *Processor) Init() error {
 
 	for _, confEntry := range p.conf.Playlists {
 		// Init playlist with state tracked
-		idx := slices.IndexFunc(p.playlists, func(playlist *models.Playlist) bool {
+		idx := slices.IndexFunc(p.playlists, func(playlist *core.Playlist) bool {
 			return playlist.Name == confEntry.Name
 		})
 		if idx != -1 {
@@ -56,7 +56,7 @@ func (p *Processor) Init() error {
 		}
 
 		// Init newly added playlists to state
-		newPlaylist := models.NewPlaylist(p.logger, confEntry)
+		newPlaylist := core.NewPlaylist(p.logger, confEntry)
 
 		p.playlists = append(p.playlists, newPlaylist)
 	}
@@ -92,17 +92,17 @@ func (p *Processor) runOnce() {
 
 	res := playlist.Process()
 	switch res {
-	case models.ProcessResultNothing:
+	case core.ProcessResultNothing:
 		skipSleep = true
 
-	case models.ProcessResultDownload, models.ProcessResultRefresh:
+	case core.ProcessResultDownload, core.ProcessResultRefresh:
 		p.failureBackoffCount = 0
 
-	case models.ProcessResultError:
+	case core.ProcessResultError:
 		p.failureBackoffCount++
 	}
 
-	if res != models.ProcessResultNothing {
+	if res != core.ProcessResultNothing {
 		err := p.saveState()
 		if err != nil {
 			p.logger.Error("Failed to save state", "err", err)
@@ -111,7 +111,7 @@ func (p *Processor) runOnce() {
 
 }
 
-func (p *Processor) nextPlaylist() *models.Playlist {
+func (p *Processor) nextPlaylist() *core.Playlist {
 	// Rotate through all playlists from p.roundRobinIndex
 	for range p.playlists {
 		selected := p.playlists[p.roundRobinIndex]
