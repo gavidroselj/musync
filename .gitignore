@@ -1,6 +1,3 @@
-music
-
-config.yml
-
-# IDE
-.vscode/
+# Local testing config and state
+config/*
+music/*

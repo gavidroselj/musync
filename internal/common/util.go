@@ -1,4 +1,4 @@
-package downloader
+package common
 
 func SafeDeref[T any](p *T) T {
 	if p == nil {
