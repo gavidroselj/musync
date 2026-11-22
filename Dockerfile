@@ -37,12 +37,15 @@ WORKDIR /app/
 ARG UID
 ARG GID
 
+# Dependencies
+RUN apt update && apt install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd -g $UID musync && \
     useradd -m -u $GID -g musync musync
 USER ${UID}:${GID}
 
 # Copy cached dependencies
-COPY --chown=${UID}:${GID} --from=dependencies /root/.cache /home/musync/.cache
+COPY --chown=${UID}:${GID} --from=dependencies /root/.cache/go-ytdlp /home/musync/.cache/go-ytdlp
 
 COPY --chown=${UID}:${GID} --from=build /app/musync .
 
