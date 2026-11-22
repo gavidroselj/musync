@@ -38,6 +38,15 @@ func NewPlaylist(logger *slog.Logger, pe config.PlaylistEntry, destination desti
 	return playlist
 }
 
+func (p *Playlist) ApplyConfig(logger *slog.Logger, pe config.PlaylistEntry, destination destination.Destination) {
+	p.URL = pe.URL
+
+	p.logger = logger.With("playlist", p.Name)
+	p.destination = destination
+
+	p.validateFiles()
+}
+
 type ProcessResult string
 
 const (
@@ -73,7 +82,7 @@ func (p *Playlist) needsRefresh() bool {
 }
 
 func (p *Playlist) Refresh() {
-	p.logger.Debug("Refreshing playlist from remote...")
+	p.logger.Info("Refreshing playlist from remote...")
 	newList, err := p.fetchPlaylistSongs()
 	if err != nil {
 		p.logger.Error("Failed to update playlist", "err", err)
@@ -82,15 +91,6 @@ func (p *Playlist) Refresh() {
 
 	p.updateTrackedSongs(newList)
 	p.LastUpdate = time.Now()
-}
-
-func (p *Playlist) ApplyConfig(logger *slog.Logger, pe config.PlaylistEntry, destination destination.Destination) {
-	p.URL = pe.URL
-
-	p.logger = logger.With("playlist", p.Name)
-	p.destination = destination
-
-	p.validateFiles()
 }
 
 // Get song list from URL
@@ -180,7 +180,7 @@ func (p *Playlist) updateTrackedSongs(newList []Song) {
 		return song.ShouldDelete(0)
 	})
 
-	p.logger.Debug("Playlist updated", "newSongs", newSongCount, "existingSongs", existingSongCount, "awaitingDeletion", awaitingDeletionCount, "deletedSongs", deletedSongCount)
+	p.logger.Info("Playlist updated", "newSongs", newSongCount, "existingSongs", existingSongCount, "awaitingDeletion", awaitingDeletionCount, "deletedSongs", deletedSongCount)
 }
 
 // getNextDownload returns the next song that should be downloaded. It returns nil if none exist.
@@ -217,7 +217,7 @@ func (p *Playlist) downloadIfAvailable() ProcessResult {
 
 		return ProcessResultError
 	}
-	p.logger.Debug("Song downloaded successfuly")
+	p.logger.Debug("Song downloaded successfuly, saving...")
 
 	targetSong.RegisterSavedFileName()
 	fileName := p.songPath(targetSong)
