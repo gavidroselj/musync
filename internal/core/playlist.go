@@ -185,7 +185,8 @@ func (p *Playlist) updateTrackedSongs(newList []Song) {
 
 // getNextDownload returns the next song that should be downloaded. It returns nil if none exist.
 func (p *Playlist) getNextDownload() *Song {
-	for _, song := range p.Songs {
+	for i := range p.Songs {
+		song := p.Songs[len(p.Songs)-1-i]
 		if song.DownloadState == SongDownloadStatePending || song.DownloadState == SongDownloadStateFailedRetry {
 			return song
 		}
