@@ -31,8 +31,9 @@ func NewProcessor(conf *config.Config, logger *slog.Logger) *Processor {
 	return &Processor{
 		roundRobinIndex: 0,
 
-		conf:   conf,
-		logger: logger,
+		destinations: map[string]destination.Destination{},
+		conf:         conf,
+		logger:       logger,
 	}
 }
 

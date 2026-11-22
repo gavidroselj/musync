@@ -224,6 +224,7 @@ func (p *Playlist) downloadIfAvailable() ProcessResult {
 		targetSong.SavedFileName = ""
 		return ProcessResultError
 	}
+	p.logger.Debug("Song successfuly written to destination")
 
 	targetSong.DownloadState = SongDownloadStateSuccess
 	return ProcessResultDownload
