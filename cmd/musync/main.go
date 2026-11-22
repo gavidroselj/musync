@@ -22,11 +22,11 @@ func main() {
 		os.Exit(1)
 	}
 	logLevel.Set(conf.LogLevel)
-	logger.Debug("Successfully loaded config", "conf", conf)
+	logger.Info("Successfully loaded config", "playlists", len(conf.Playlists))
 
 	dependencies.DownloadDependencies(logger)
 
-	logger.Info("muSync starting", "version", ytdlp.Version, "logLevel", logLevel)
+	logger.Info("muSync starting", "yt-dlp", ytdlp.Version, "logLevel", logLevel)
 
 	processor := processor.NewProcessor(conf, logger)
 	err = processor.Init()
