@@ -44,7 +44,6 @@ func songDownloader(logger *slog.Logger) (*ytdlp.Command, context.Context, conte
 		AudioFormat("mp3").
 		EmbedMetadata().
 		AbortOnError().
-		NoPart().
 		SponsorblockRemove("sponsor,intro,outro,selfpromo,preview,interaction,music_offtopic").
 		ProgressFunc(progressFuncInterval, func(update ytdlp.ProgressUpdate) {
 			logger.Debug("Downloading...", "progress", fmt.Sprintf("%.1f%%", update.Percent()), "ETA", update.ETA())
