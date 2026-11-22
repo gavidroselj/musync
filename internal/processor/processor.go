@@ -148,7 +148,7 @@ func (p *Processor) runOnce() {
 	case core.ProcessResultDownload, core.ProcessResultRefresh:
 		p.failureBackoffCount = 0
 
-	case core.ProcessResultError:
+	case core.ProcessResultErrorBackoff:
 		p.failureBackoffCount++
 	}
 

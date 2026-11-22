@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"path"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/gavidroselj/musync/internal/config"
@@ -50,10 +49,11 @@ func (p *Playlist) ApplyConfig(logger *slog.Logger, pe config.PlaylistEntry, des
 type ProcessResult string
 
 const (
-	ProcessResultNothing  ProcessResult = "NOTHING"
-	ProcessResultRefresh  ProcessResult = "REFRESH"
-	ProcessResultDownload ProcessResult = "DOWNLOAD"
-	ProcessResultError    ProcessResult = "ERROR"
+	ProcessResultNothing       ProcessResult = "NOTHING"
+	ProcessResultRefresh       ProcessResult = "REFRESH"
+	ProcessResultDownload      ProcessResult = "DOWNLOAD"
+	ProcessResultErrorContinue ProcessResult = "ERROR_CONTINUE"
+	ProcessResultErrorBackoff  ProcessResult = "ERROR_BACKOFF"
 )
 
 func (p *Playlist) Process() ProcessResult {
@@ -210,13 +210,19 @@ func (p *Playlist) downloadIfAvailable() ProcessResult {
 	if err != nil {
 		p.logger.Error("Failed to download song", "err", err)
 
-		if targetSong.DownloadState == SongDownloadStateFailedRetry || strings.Contains(err.Error(), "Video unavailable.") || strings.Contains(err.Error(), "Private video.") {
+		if downloader.IsErrVideoUnavailable(err) {
+			p.logger.Debug("Song identified as unavailable, will not retry")
+			targetSong.DownloadState = SongDownloadStateFailedUnavailable
+			return ProcessResultErrorContinue
+		}
+
+		if targetSong.DownloadState == SongDownloadStateFailedRetry {
 			targetSong.DownloadState = SongDownloadStateFailedUnavailable
 		} else {
 			targetSong.DownloadState = SongDownloadStateFailedRetry
 		}
 
-		return ProcessResultError
+		return ProcessResultErrorBackoff
 	}
 	p.logger.Debug("Song downloaded successfuly, saving...")
 
@@ -228,7 +234,7 @@ func (p *Playlist) downloadIfAvailable() ProcessResult {
 		p.logger.Error("Failed to write song to destination", "err", err)
 		targetSong.SavedFileName = ""
 		targetSong.DownloadState = SongDownloadStateFailedRetry
-		return ProcessResultError
+		return ProcessResultErrorContinue
 	}
 	p.logger.Debug("Song successfuly written to destination")
 
