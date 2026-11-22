@@ -4,12 +4,31 @@ log_level: INFO
 # List of playlists to download
 playlists:
   # Playlist name, used to identify playlist, changing this after creation will cause the playlist state to be forgotten.
-  - name: Playlist1
+  # Name is also used as the subfolder name at destination.
+  - name: playlist1
     # URL from which to download, only youtube was tested, all websites supported by yt-dlp might work.
     url: https://www.youtube.com/playlist?list=abcd1234
-    # Path to where audio files should be stored. This path can be absolute or relative from the dir of the executable.
-    path: music/folder1
+    # Name of the destination where this playlist should be stored. A subfolder with the playlist name will be created.
+    destination: local1
 
-  - name: Playlist2
+  - name: playlist2
     url: https://www.youtube.com/playlist?list=efgh5678
-    path: music/folder2
+    destination: webdav1
+
+# List of destinations where playlists will be stored. At least one is required.
+# Destination names are used as keys and should be unique within the same type and between different types.
+destinations:
+  # Local destinations are placed directly on the filesystem the app is running on.
+  local:
+    - name: local1
+      # Root directory where files should be stored.
+      root: music
+
+  # Webdav destinations store files on a WebDAV server.
+  webdav:
+    - name: webdav1
+      # URL at which to place files. The specified folder path must exist on the WebDAV server, or uploads will fail.
+      root_url: https://example.com/path/to/webdav
+      # Authentication details
+      user: john
+      password: password123

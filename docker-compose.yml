@@ -3,11 +3,9 @@ services:
     image: ghcr.io/gavidroselj/musync
     restart: always
     volumes:
-      # App config.yml and state.json are stored in here.
+      # App config.yml, state.json and temporary files are stored in here.
       - /path/to/config:/app/config
 
-      # Recommended playlist folder setup, make sure these paths match the configured ones.
-      # Relative config paths start from /app, so the path for this playlist should be either `/app/music/playlist1` or `music/playlist1`
-      - /path/to/playlist1:/app/music/playlist1
-
-      - /path/to/playlist2:/app/music/playlist2
+      # Recommended mount setups are one mount per local destination. Playlists at the destination will then be created within subfolders
+      # Relative root paths start from /app, so the root path for this destination should be either `/app/music` or `music`.
+      - /path/to/music/destination:/app/music

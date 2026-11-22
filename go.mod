@@ -6,6 +6,7 @@ require (
 	github.com/gavidroselj/golf v1.0.0
 	github.com/lrstanley/go-ytdlp v1.5.6
 	github.com/stretchr/testify v1.12.1
+	github.com/studio-b12/gowebdav v0.13.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

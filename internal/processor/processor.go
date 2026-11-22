@@ -3,31 +3,37 @@ package processor
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"log/slog"
 	"os"
 	"slices"
 	"time"
 
 	"github.com/gavidroselj/musync/internal/config"
-	"github.com/gavidroselj/musync/internal/models"
+	"github.com/gavidroselj/musync/internal/core"
+	"github.com/gavidroselj/musync/internal/destination"
 )
 
+var ErrMissingDestination = errors.New("missing destination")
+
 type Processor struct {
-	playlists []*models.Playlist
+	playlists []*core.Playlist
 
 	roundRobinIndex     int
 	failureBackoffCount int
 
-	conf   *config.Config
-	logger *slog.Logger
+	destinations map[string]destination.Destination
+	conf         *config.Config
+	logger       *slog.Logger
 }
 
 func NewProcessor(conf *config.Config, logger *slog.Logger) *Processor {
 	return &Processor{
 		roundRobinIndex: 0,
 
-		conf:   conf,
-		logger: logger,
+		destinations: map[string]destination.Destination{},
+		conf:         conf,
+		logger:       logger,
 	}
 }
 
@@ -37,34 +43,78 @@ func (p *Processor) Init() error {
 		return err
 	}
 
-	// Delete state for non-configured playlists
-	p.playlists = slices.DeleteFunc(p.playlists, func(playlist *models.Playlist) bool {
-		return !slices.ContainsFunc(p.conf.Playlists, func(playlistEntry config.PlaylistEntry) bool {
-			return playlist.Name == playlistEntry.Name
-		})
-	})
+	err = p.prepareDestinations()
+	if err != nil {
+		return err
+	}
 
-	for _, confEntry := range p.conf.Playlists {
-		// Init playlist with state tracked
-		idx := slices.IndexFunc(p.playlists, func(playlist *models.Playlist) bool {
-			return playlist.Name == confEntry.Name
-		})
-		if idx != -1 {
-			playlist := p.playlists[idx]
-			playlist.ApplyConfig(p.logger, confEntry)
-			continue
-		}
-
-		// Init newly added playlists to state
-		newPlaylist := models.NewPlaylist(p.logger, confEntry)
-
-		p.playlists = append(p.playlists, newPlaylist)
+	err = p.preparePlaylists()
+	if err != nil {
+		return err
 	}
 
 	err = p.saveState()
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (p *Processor) prepareDestinations() error {
+	for _, ldEntry := range p.conf.Destinations.LocalDestinations {
+		ld, err := destination.NewLocalDestination(p.logger, ldEntry.Root)
+		if err != nil {
+			return err
+		}
+
+		p.destinations[ldEntry.Name] = ld
+	}
+
+	for _, wdEntry := range p.conf.Destinations.WebdavDestinations {
+		wd, err := destination.NewWebdavDestination(p.logger, wdEntry.RootURL, wdEntry.User, wdEntry.Password)
+		if err != nil {
+			return err
+		}
+
+		p.destinations[wdEntry.Name] = wd
+	}
+
+	return nil
+}
+
+func (p *Processor) preparePlaylists() error {
+	// Initialize configured playlists
+	for _, confEntry := range p.conf.Playlists {
+		dest, ok := p.destinations[confEntry.Destination]
+		if !ok {
+			p.logger.Error("Missing destination entry for playlist", "destination", confEntry.Destination)
+			return ErrMissingDestination
+		}
+
+		// Init playlist with state tracked
+		idx := slices.IndexFunc(p.playlists, func(playlist *core.Playlist) bool {
+			return playlist.Name == confEntry.Name
+		})
+		if idx != -1 {
+			playlist := p.playlists[idx]
+
+			playlist.ApplyConfig(p.logger, confEntry, dest)
+			continue
+		}
+
+		// Init newly added playlists to state
+		newPlaylist := core.NewPlaylist(p.logger, confEntry, dest)
+
+		p.playlists = append(p.playlists, newPlaylist)
+	}
+
+	// Delete state for non-configured playlists
+	p.playlists = slices.DeleteFunc(p.playlists, func(playlist *core.Playlist) bool {
+		return !slices.ContainsFunc(p.conf.Playlists, func(playlistEntry config.PlaylistEntry) bool {
+			return playlist.Name == playlistEntry.Name
+		})
+	})
 
 	return nil
 }
@@ -92,17 +142,17 @@ func (p *Processor) runOnce() {
 
 	res := playlist.Process()
 	switch res {
-	case models.ProcessResultNothing:
+	case core.ProcessResultNothing:
 		skipSleep = true
 
-	case models.ProcessResultDownload, models.ProcessResultRefresh:
+	case core.ProcessResultDownload, core.ProcessResultRefresh:
 		p.failureBackoffCount = 0
 
-	case models.ProcessResultError:
+	case core.ProcessResultError:
 		p.failureBackoffCount++
 	}
 
-	if res != models.ProcessResultNothing {
+	if res != core.ProcessResultNothing {
 		err := p.saveState()
 		if err != nil {
 			p.logger.Error("Failed to save state", "err", err)
@@ -111,7 +161,7 @@ func (p *Processor) runOnce() {
 
 }
 
-func (p *Processor) nextPlaylist() *models.Playlist {
+func (p *Processor) nextPlaylist() *core.Playlist {
 	// Rotate through all playlists from p.roundRobinIndex
 	for range p.playlists {
 		selected := p.playlists[p.roundRobinIndex]

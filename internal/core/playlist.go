@@ -1,34 +1,39 @@
-package models
+package core
 
 import (
 	"log/slog"
+	"path"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/gavidroselj/musync/internal/config"
+	"github.com/gavidroselj/musync/internal/destination"
 	"github.com/gavidroselj/musync/internal/downloader"
+)
+
+const (
+	playlistRefreshTimeout = time.Hour * 6
 )
 
 type Playlist struct {
 	Name       string    `json:"name"`
 	URL        string    `json:"url"`
 	Songs      []*Song   `json:"songs"`
-	Path       string    `json:"path"`
 	LastUpdate time.Time `json:"last_update"`
 
-	fileManager *FileManager
+	destination destination.Destination
 	logger      *slog.Logger
 }
 
-func NewPlaylist(logger *slog.Logger, pe config.PlaylistEntry) *Playlist {
+func NewPlaylist(logger *slog.Logger, pe config.PlaylistEntry, destination destination.Destination) *Playlist {
 	playlist := &Playlist{
 		Name:       pe.Name,
 		Songs:      []*Song{},
 		LastUpdate: time.UnixMilli(0),
 	}
 
-	playlist.ApplyConfig(logger, pe)
+	playlist.ApplyConfig(logger, pe, destination)
 
 	return playlist
 }
@@ -64,7 +69,7 @@ func (p *Playlist) NeedsProcessing() bool {
 }
 
 func (p *Playlist) needsRefresh() bool {
-	return p.LastUpdate.Before(time.Now().Add(-time.Hour * 6))
+	return p.LastUpdate.Before(time.Now().Add(-playlistRefreshTimeout))
 }
 
 func (p *Playlist) Refresh() {
@@ -79,13 +84,11 @@ func (p *Playlist) Refresh() {
 	p.LastUpdate = time.Now()
 }
 
-func (p *Playlist) ApplyConfig(logger *slog.Logger, pe config.PlaylistEntry) {
+func (p *Playlist) ApplyConfig(logger *slog.Logger, pe config.PlaylistEntry, destination destination.Destination) {
 	p.URL = pe.URL
-	p.Path = pe.Path
 
 	p.logger = logger.With("playlist", p.Name)
-
-	p.fileManager = NewFileManager(p.logger, p.Path)
+	p.destination = destination
 
 	p.validateFiles()
 }
@@ -157,8 +160,9 @@ func (p *Playlist) updateTrackedSongs(newList []Song) {
 		}) {
 			shouldDelete := song.ShouldDelete(0.1) // TODO: Make this dynamic based on how many songs were deleted.
 
-			if shouldDelete && p.fileManager != nil {
-				err := p.fileManager.DeleteSong(song)
+			if shouldDelete {
+				fileName := p.songPath(song)
+				err := p.destination.DeleteFile(fileName)
 				if err != nil {
 					p.logger.Error("Failed to delete song", "song", song, "err", err)
 				}
@@ -201,7 +205,7 @@ func (p *Playlist) downloadIfAvailable() ProcessResult {
 	}
 
 	p.logger.Info("Downloading song", "id", targetSong.ID, "url", targetSong.URL, "title", targetSong.Title)
-	err := p.fileManager.DownloadSong(targetSong)
+	data, err := downloader.DownloadSong(p.logger, targetSong.URL)
 	if err != nil {
 		p.logger.Error("Failed to download song", "err", err)
 
@@ -213,8 +217,20 @@ func (p *Playlist) downloadIfAvailable() ProcessResult {
 
 		return ProcessResultError
 	}
-
 	p.logger.Debug("Song downloaded successfuly")
+
+	targetSong.RegisterSavedFileName()
+	fileName := p.songPath(targetSong)
+
+	err = p.destination.CreateFile(fileName, data)
+	if err != nil {
+		p.logger.Error("Failed to write song to destination", "err", err)
+		targetSong.SavedFileName = ""
+		targetSong.DownloadState = SongDownloadStateFailedRetry
+		return ProcessResultError
+	}
+	p.logger.Debug("Song successfuly written to destination")
+
 	targetSong.DownloadState = SongDownloadStateSuccess
 	return ProcessResultDownload
 }
@@ -228,13 +244,23 @@ func (p *Playlist) validateFiles() {
 			continue
 		}
 
-		path := p.fileManager.GetSongPath(song)
-		if p.fileManager.FileExists(path) {
+		fileName := p.songPath(song)
+		exists, err := p.destination.FileExists(fileName)
+		if err != nil {
+			p.logger.Error("Failed to check whether file exists", "fileName", fileName, "err", err)
+			continue
+		}
+
+		if exists {
 			song.DownloadState = SongDownloadStateSuccess
 		} else {
-			p.logger.Warn("Expected file is missing", "name", song.FileName, "id", song.ID, "path", path)
+			p.logger.Warn("Expected file is missing", "fileName", fileName, "id", song.ID)
 			song.DownloadState = SongDownloadStateMissing
 			// TODO: Figure out how to handle missing files
 		}
 	}
+}
+
+func (p *Playlist) songPath(song *Song) string {
+	return path.Join(p.Name, song.SavedFileName)
 }
