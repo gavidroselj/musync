@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"path"
 	"time"
 
+	"github.com/gavidroselj/musync/internal/config"
 	"github.com/lrstanley/go-ytdlp"
 )
 
@@ -13,6 +16,8 @@ const (
 	playlistRefreshTimeout = time.Second * 30
 	songDownloadTimeout    = time.Second * 30
 	progressFuncInterval   = time.Second
+	tempFileName           = "temp-download"
+	SongFileExtension      = "mp3"
 )
 
 func getContext(duration time.Duration) (context.Context, context.CancelFunc) {
@@ -30,8 +35,8 @@ func PlaylistDownloader(logger *slog.Logger) (*ytdlp.Command, context.Context, c
 	return dl, ctx, cancel
 }
 
-// SongDownloader returns a ytdlp instance for downloading a song. Output path should be set before running it.
-func SongDownloader(logger *slog.Logger) (*ytdlp.Command, context.Context, context.CancelFunc) {
+// songDownloader returns a ytdlp instance for downloading a song. Output path should be set before running it.
+func songDownloader(logger *slog.Logger) (*ytdlp.Command, context.Context, context.CancelFunc) {
 	dl := ytdlp.New().
 		AudioQuality("0").
 		ExtractAudio().
@@ -47,4 +52,30 @@ func SongDownloader(logger *slog.Logger) (*ytdlp.Command, context.Context, conte
 
 	ctx, cancel := getContext(songDownloadTimeout)
 	return dl, ctx, cancel
+}
+
+// DownloadSong downloads a song to disk (because yt-dlp doesn't support direct to memory downloads), reads it and removes it from disk.
+func DownloadSong(logger *slog.Logger, url string) ([]byte, error) {
+	dl, ctx, cancel := songDownloader(logger)
+	defer cancel()
+
+	tempFilePath := path.Join(config.WorkDir, tempFileName)
+	tempFileName := fmt.Sprintf("%s.%s", tempFilePath, SongFileExtension)
+
+	_, err := dl.Output(tempFilePath).Run(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(tempFileName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.Remove(tempFileName)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }

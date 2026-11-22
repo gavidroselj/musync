@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	workDir    = "config"
+	WorkDir    = "config"
 	configFile = "config.yml"
 	stateFile  = "state.json"
 )
@@ -61,9 +61,9 @@ func LoadConfig() (*Config, error) {
 }
 
 func ConfigFilePath() string {
-	return path.Join(workDir, configFile)
+	return path.Join(WorkDir, configFile)
 }
 
 func StateFilePath() string {
-	return path.Join(workDir, stateFile)
+	return path.Join(WorkDir, stateFile)
 }

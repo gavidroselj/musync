@@ -1,10 +1,12 @@
 package core
 
 import (
+	"fmt"
 	"log/slog"
 	"strings"
 
 	"github.com/gavidroselj/musync/internal/common"
+	"github.com/gavidroselj/musync/internal/downloader"
 	"github.com/lrstanley/go-ytdlp"
 )
 
@@ -38,7 +40,9 @@ type Song struct {
 
 	PlaylistState SongPlaylistState `json:"playlist_state"`
 	DownloadState SongDownloadState `json:"download_state"`
-	FileName      string            `json:"file_name"`
+
+	// SavedFileName stores the file name the song has on disk. It does not include the destination root or the playlist name path.
+	SavedFileName string `json:"saved_file_name"`
 
 	logger *slog.Logger `json:"-"`
 }
@@ -97,8 +101,8 @@ func (s *Song) updateMetadata(newSong Song) {
 	s.Title = newSong.Title
 }
 
-// Returns the song title with all potentially problematic characters for filename removed
-func (s *Song) SanitizedTitle() string {
+// sanitizedTitle returns the song title with all potentially problematic characters for filename removed
+func (s *Song) sanitizedTitle() string {
 	const replacementChar = "-"
 
 	title := strings.ReplaceAll(s.Title, "<", replacementChar)
@@ -112,4 +116,9 @@ func (s *Song) SanitizedTitle() string {
 	title = strings.ReplaceAll(title, "*", replacementChar)
 
 	return title
+}
+
+// RegisterSavedFileName creates the song file name and stores it in the s.SavedFileName field.
+func (s *Song) RegisterSavedFileName() {
+	s.SavedFileName = fmt.Sprintf("%s [%s].%s", s.sanitizedTitle(), s.ID, downloader.SongFileExtension)
 }

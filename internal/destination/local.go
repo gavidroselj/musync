@@ -26,8 +26,8 @@ func NewLocalDestination(logger *slog.Logger, rootPath string) (*LocalDestinatio
 	return ld, nil
 }
 
-func (ld *LocalDestination) FileExists(name string) (bool, error) {
-	_, err := ld.root.Stat(name)
+func (ld *LocalDestination) FileExists(fileName string) (bool, error) {
+	_, err := ld.root.Stat(fileName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
@@ -39,9 +39,9 @@ func (ld *LocalDestination) FileExists(name string) (bool, error) {
 	return true, nil
 }
 
-func (ld *LocalDestination) CreateFile(name string, data []byte) error {
+func (ld *LocalDestination) CreateFile(fileName string, data []byte) error {
 	// Abort if file already exists
-	exists, err := ld.FileExists(name)
+	exists, err := ld.FileExists(fileName)
 	if err != nil {
 		return err
 	}
@@ -49,12 +49,12 @@ func (ld *LocalDestination) CreateFile(name string, data []byte) error {
 		return ErrFileExists
 	}
 
-	err = ld.root.MkdirAll(path.Dir(name), dirMode)
+	err = ld.root.MkdirAll(path.Dir(fileName), dirMode)
 	if err != nil {
 		return err
 	}
 
-	err = ld.root.WriteFile(name, data, fileMode)
+	err = ld.root.WriteFile(fileName, data, fileMode)
 	if err != nil {
 		return err
 	}
@@ -62,17 +62,17 @@ func (ld *LocalDestination) CreateFile(name string, data []byte) error {
 	return nil
 }
 
-func (ld *LocalDestination) DeleteFile(name string) error {
-	exists, err := ld.FileExists(name)
+func (ld *LocalDestination) DeleteFile(fileName string) error {
+	exists, err := ld.FileExists(fileName)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		ld.logger.Warn("File for deletion did not exist on disk, this should not be a problem", "file", name)
+		ld.logger.Warn("File for deletion did not exist on disk, this should not be a problem", "file", fileName)
 		return nil
 	}
 
-	err = ld.root.Remove(name)
+	err = ld.root.Remove(fileName)
 	if err != nil {
 		return err
 	}
