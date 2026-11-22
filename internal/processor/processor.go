@@ -16,6 +16,10 @@ import (
 
 var ErrMissingDestination = errors.New("missing destination")
 
+const (
+	maxBackoffTime = time.Minute * 30
+)
+
 type Processor struct {
 	playlists []*core.Playlist
 
@@ -130,6 +134,9 @@ func (p *Processor) runOnce() {
 
 	defer func() {
 		if !skipSleep {
+			if p.failureBackoffCount > 0 {
+				p.logger.Debug("Backing off due to download failures", "failureCount", p.failureBackoffCount, "sleepDuration", p.sleepDuration())
+			}
 			time.Sleep(p.sleepDuration())
 		}
 	}()
@@ -182,7 +189,7 @@ func (p *Processor) sleepDuration() time.Duration {
 		duration *= 2
 	}
 
-	return min(duration, time.Hour)
+	return min(duration, maxBackoffTime)
 }
 
 func (p *Processor) loadState() error {
