@@ -222,6 +222,7 @@ func (p *Playlist) downloadIfAvailable() ProcessResult {
 	if err != nil {
 		p.logger.Error("Failed to write song to destination", "err", err)
 		targetSong.SavedFileName = ""
+		targetSong.DownloadState = SongDownloadStateFailedRetry
 		return ProcessResultError
 	}
 	p.logger.Debug("Song successfuly written to destination")

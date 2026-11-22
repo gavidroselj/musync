@@ -1,12 +1,15 @@
 package destination
 
 import (
-	"errors"
 	"log/slog"
-	"os"
 	"path"
+	"strings"
 
 	"github.com/studio-b12/gowebdav"
+)
+
+const (
+	fileNotExistStatPrefix = "PROPFIND "
 )
 
 type WebdavDestination struct {
@@ -32,7 +35,7 @@ func NewWebdavDestination(logger *slog.Logger, rootURL, user, password string) (
 func (wd *WebdavDestination) FileExists(name string) (bool, error) {
 	_, err := wd.client.Stat(name)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if strings.HasPrefix(err.Error(), fileNotExistStatPrefix) {
 			return false, nil
 		}
 

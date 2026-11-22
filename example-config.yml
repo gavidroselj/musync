@@ -27,7 +27,7 @@ destinations:
   # Webdav destinations store files on a WebDAV server.
   webdav:
     - name: webdav1
-      # URL at which to place files.
+      # URL at which to place files. The specified folder path must exist on the WebDAV server, or uploads will fail.
       root_url: https://example.com/path/to/webdav
       # Authentication details
       user: john
