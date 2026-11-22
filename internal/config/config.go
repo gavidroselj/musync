@@ -15,14 +15,32 @@ const (
 )
 
 type Config struct {
-	LogLevel  slog.Level      `yaml:"log_level"`
-	Playlists []PlaylistEntry `yaml:"playlists"`
+	LogLevel     slog.Level      `yaml:"log_level"`
+	Playlists    []PlaylistEntry `yaml:"playlists"`
+	Destinations Destinations    `yaml:"destinations"`
+}
+
+type Destinations struct {
+	LocalDestinations  []LocalDestination  `yaml:"local"`
+	WebdavDestinations []WebdavDestination `yaml:"webdav"`
 }
 
 type PlaylistEntry struct {
 	Name string `yaml:"name"`
 	URL  string `yaml:"url"`
 	Path string `yaml:"path"`
+}
+
+type LocalDestination struct {
+	Name string `yaml:"name"`
+	Root string `yaml:"root"`
+}
+
+type WebdavDestination struct {
+	Name     string `yaml:"name"`
+	RootURL  string `yaml:"root_url"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
 }
 
 func LoadConfig() (*Config, error) {
