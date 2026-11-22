@@ -26,9 +26,10 @@ type Destinations struct {
 }
 
 type PlaylistEntry struct {
-	Name string `yaml:"name"`
-	URL  string `yaml:"url"`
-	Path string `yaml:"path"`
+	Name        string `yaml:"name"`
+	URL         string `yaml:"url"`
+	Path        string `yaml:"path"`
+	Destination string `yaml:"destination"`
 }
 
 type LocalDestination struct {

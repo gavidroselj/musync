@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gavidroselj/golf"
+	"github.com/gavidroselj/musync/internal/destination"
 )
 
 func testPlaylist() *Playlist {
@@ -31,7 +32,8 @@ func testPlaylist() *Playlist {
 			},
 		},
 
-		logger: slog.Default(),
+		logger:      slog.Default(),
+		destination: &destination.TestDestination{},
 	}
 }
 

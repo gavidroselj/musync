@@ -22,3 +22,17 @@ type Destination interface {
 	// If no file exists, deletion is treated as successful.
 	DeleteFile(fileName string) error
 }
+
+type TestDestination struct{}
+
+func (td *TestDestination) FileExists(fileName string) (bool, error) {
+	return true, nil
+}
+
+func (td *TestDestination) CreateFile(fileName string, data []byte) error {
+	return nil
+}
+
+func (td *TestDestination) DeleteFile(fileName string) error {
+	return nil
+}

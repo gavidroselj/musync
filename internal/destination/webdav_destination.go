@@ -14,15 +14,15 @@ type WebdavDestination struct {
 	client *gowebdav.Client
 }
 
-func NewWebdavDestination(logger *slog.Logger, rootURL, username, password string) (*WebdavDestination, error) {
-	client := gowebdav.NewClient(rootURL, username, password)
+func NewWebdavDestination(logger *slog.Logger, rootURL, user, password string) (*WebdavDestination, error) {
+	client := gowebdav.NewClient(rootURL, user, password)
 	err := client.Connect()
 	if err != nil {
 		return nil, err
 	}
 
 	ld := &WebdavDestination{
-		logger: logger.With("destinationType", "webdav", "rootURL", rootURL, "username", username),
+		logger: logger.With("destinationType", "webdav", "rootURL", rootURL, "user", user),
 		client: client,
 	}
 

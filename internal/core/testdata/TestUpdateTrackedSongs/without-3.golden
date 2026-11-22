@@ -6,7 +6,7 @@
 		"deletion_margin": 0,
 		"playlist_state": "OK",
 		"download_state": "",
-		"file_name": ""
+		"saved_file_name": ""
 	},
 	{
 		"id": "2",
@@ -15,6 +15,6 @@
 		"deletion_margin": 0,
 		"playlist_state": "OK",
 		"download_state": "",
-		"file_name": ""
+		"saved_file_name": ""
 	}
 ]
