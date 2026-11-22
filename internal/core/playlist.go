@@ -12,6 +12,10 @@ import (
 	"github.com/gavidroselj/musync/internal/downloader"
 )
 
+const (
+	playlistRefreshTimeout = time.Hour * 6
+)
+
 type Playlist struct {
 	Name       string    `json:"name"`
 	URL        string    `json:"url"`
@@ -65,7 +69,7 @@ func (p *Playlist) NeedsProcessing() bool {
 }
 
 func (p *Playlist) needsRefresh() bool {
-	return p.LastUpdate.Before(time.Now().Add(-time.Hour * 6))
+	return p.LastUpdate.Before(time.Now().Add(-playlistRefreshTimeout))
 }
 
 func (p *Playlist) Refresh() {
