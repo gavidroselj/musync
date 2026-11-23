@@ -94,6 +94,12 @@ func NewSongFromInfo(info *ytdlp.ExtractedInfo, logger *slog.Logger) Song {
 
 // ShouldDownload returns true if this song is currently eligible for a download attempt
 func (s *Song) ShouldDownload() bool {
+	// Download has already been complete
+	// TODO: Missing file handling
+	if s.DownloadState == SongDownloadStateSuccess || s.DownloadState == SongDownloadStateMissing {
+		return false
+	}
+
 	// No issues
 	if s.DownloadState == SongDownloadStatePending {
 		return true
