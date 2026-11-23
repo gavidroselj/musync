@@ -14,7 +14,7 @@ import (
 
 const (
 	playlistRefreshTimeout = time.Minute
-	songDownloadTimeout    = time.Minute
+	songDownloadTimeout    = time.Minute * 2
 	progressFuncInterval   = time.Second * 2
 	tempFileName           = "temp-download"
 	SongFileExtension      = "mp3"

@@ -187,7 +187,7 @@ func (p *Playlist) updateTrackedSongs(newList []Song) {
 func (p *Playlist) getNextDownload() *Song {
 	for i := range p.Songs {
 		song := p.Songs[len(p.Songs)-1-i]
-		if song.DownloadState == SongDownloadStatePending || song.DownloadState == SongDownloadStateFailedRetry {
+		if song.ShouldDownload() {
 			return song
 		}
 	}
@@ -212,41 +212,33 @@ func (p *Playlist) downloadIfAvailable() ProcessResult {
 
 		if downloader.IsErrVideoUnavailable(err) {
 			p.logger.Debug("Song identified as unavailable, will not retry")
-			targetSong.DownloadState = SongDownloadStateFailedUnavailable
+			targetSong.RegisterFailedDownloadAttempt(true)
 			return ProcessResultErrorContinue
 		}
 
-		if targetSong.DownloadState == SongDownloadStateFailedRetry {
-			targetSong.DownloadState = SongDownloadStateFailedUnavailable
-		} else {
-			targetSong.DownloadState = SongDownloadStateFailedRetry
-		}
+		targetSong.RegisterFailedDownloadAttempt(false)
 
 		return ProcessResultErrorBackoff
 	}
 	p.logger.Debug("Song downloaded successfuly, saving...")
 
-	targetSong.RegisterSavedFileName()
-	fileName := p.songPath(targetSong)
+	filePath := p.songPath(targetSong)
 
-	err = p.destination.CreateFile(fileName, data)
+	err = p.destination.CreateFile(filePath, data)
 	if err != nil {
 		p.logger.Error("Failed to write song to destination", "err", err)
-		targetSong.SavedFileName = ""
-		targetSong.DownloadState = SongDownloadStateFailedRetry
+		targetSong.RegisterFailedDownloadAttempt(false)
 		return ProcessResultErrorContinue
 	}
 	p.logger.Debug("Song successfuly written to destination")
 
-	targetSong.DownloadState = SongDownloadStateSuccess
+	targetSong.RegisterDownloadSuccess(path.Base(filePath))
 	return ProcessResultDownload
 }
 
 func (p *Playlist) validateFiles() {
 	for _, song := range p.Songs {
-		if song.DownloadState == SongDownloadStatePending ||
-			song.DownloadState == SongDownloadStateFailedRetry ||
-			song.DownloadState == SongDownloadStateFailedUnavailable {
+		if song.SavedFileName == "" {
 			// Song is not downloaded yet, skip
 			continue
 		}
@@ -269,5 +261,5 @@ func (p *Playlist) validateFiles() {
 }
 
 func (p *Playlist) songPath(song *Song) string {
-	return path.Join(p.Name, song.SavedFileName)
+	return path.Join(p.Name, song.GetFileName())
 }
