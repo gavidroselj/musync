@@ -6,6 +6,8 @@
 		"deletion_margin": 0,
 		"playlist_state": "OK",
 		"download_state": "",
+		"download_retry_count": 0,
+		"download_backoff_time": "0001-01-01T00:00:00Z",
 		"saved_file_name": ""
 	},
 	{
@@ -15,6 +17,8 @@
 		"deletion_margin": 0,
 		"playlist_state": "OK",
 		"download_state": "",
+		"download_retry_count": 0,
+		"download_backoff_time": "0001-01-01T00:00:00Z",
 		"saved_file_name": ""
 	}
 ]

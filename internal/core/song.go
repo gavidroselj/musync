@@ -4,10 +4,17 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/gavidroselj/musync/internal/common"
 	"github.com/gavidroselj/musync/internal/downloader"
 	"github.com/lrstanley/go-ytdlp"
+)
+
+const (
+	songMaxDownloadAttempts                = 5
+	songMaxDownloadAttemptsBackoffDuration = time.Hour * 24
+	songUnavailableBackoffDuration         = time.Hour * 24 * 14
 )
 
 type SongPlaylistState string
@@ -20,11 +27,12 @@ const (
 type SongDownloadState string
 
 const (
-	SongDownloadStatePending           SongDownloadState = "PENDING"            // No download attempt has been made for this song yet
-	SongDownloadStateFailedRetry       SongDownloadState = "FAILED_RETRY"       // Last download attempt failed, will retry
-	SongDownloadStateFailedUnavailable SongDownloadState = "FAILED_UNAVAILABLE" // Last download attempt failed, song was detected as unavailable, will not retry
-	SongDownloadStateSuccess           SongDownloadState = "SUCCESS"            // Song is downloaded an exists at target
-	SongDownloadStateMissing           SongDownloadState = "MISSING"            // Song was downloaded, but file no longer exists at target
+	SongDownloadStatePending       SongDownloadState = "PENDING"        // No download attempt has been made for this song yet
+	SongDownloadStateFailedRetry   SongDownloadState = "FAILED_RETRY"   // Last download attempt failed, will retry
+	SongDownloadStateFailedBackoff SongDownloadState = "FAILED_BACKOFF" // Multiple download attempts failed, will not retry for a while
+	SongDownloadStateUnavailable   SongDownloadState = "UNAVAILABLE"    // Song was detected as unavailable, will not retry for a long while
+	SongDownloadStateSuccess       SongDownloadState = "SUCCESS"        // Song is downloaded and exists at destination
+	SongDownloadStateMissing       SongDownloadState = "MISSING"        // Song was downloaded, but file no longer exists at destination
 )
 
 type Song struct {
@@ -38,8 +46,16 @@ type Song struct {
 	// A song will only be deleted when this value is greater or equal to 1.
 	DeletionMargin float64 `json:"deletion_margin"`
 
+	// PlaylistState stores whether the song is currently in the remote playlist or not
 	PlaylistState SongPlaylistState `json:"playlist_state"`
+
+	// DownloadState stores whether the song has been downloaded yet or not
 	DownloadState SongDownloadState `json:"download_state"`
+
+	// DownloadRetryCount counts how many times a download has failed on this song
+	DownloadRetryCount int `json:"download_retry_count"`
+	// DownloadBackoffTime specifies when the next download attempt will be made, when the song has hit too many retries
+	DownloadBackoffTime time.Time `json:"download_backoff_time"`
 
 	// SavedFileName stores the file name the song has on disk. It does not include the destination root or the playlist name path.
 	SavedFileName string `json:"saved_file_name"`
@@ -55,8 +71,10 @@ func NewSong(id, url, title string, logger *slog.Logger) Song {
 
 		DeletionMargin: 0,
 
-		PlaylistState: SongPlaylistStateOk,
-		DownloadState: SongDownloadStatePending,
+		PlaylistState:       SongPlaylistStateOk,
+		DownloadState:       SongDownloadStatePending,
+		DownloadRetryCount:  0,
+		DownloadBackoffTime: time.UnixMilli(0),
 
 		logger: logger.With("songID", id),
 	}
@@ -72,6 +90,54 @@ func NewSongFromInfo(info *ytdlp.ExtractedInfo, logger *slog.Logger) Song {
 	}
 
 	return NewSong(info.ID, url, common.SafeDeref(info.Title), logger)
+}
+
+// ShouldDownload returns true if this song is currently eligible for a download attempt
+func (s *Song) ShouldDownload() bool {
+	// No issues
+	if s.DownloadState == SongDownloadStatePending {
+		return true
+	}
+	// Retry below limit
+	if s.DownloadState == SongDownloadStateFailedRetry {
+		return true
+	}
+
+	// Song is in backoff, check if backoff time has passed
+	return time.Now().After(s.DownloadBackoffTime)
+}
+
+// RegisterFailedDownloadAttempt updates the song DownloadState and related fields
+func (s *Song) RegisterFailedDownloadAttempt(markUnavailable bool) {
+	if markUnavailable {
+		s.DownloadState = SongDownloadStateUnavailable
+		s.DownloadRetryCount = 0
+		s.DownloadBackoffTime = time.Now().Add(songUnavailableBackoffDuration)
+		return
+	}
+
+	s.DownloadState = SongDownloadStateFailedRetry
+	s.DownloadRetryCount++
+
+	if s.DownloadRetryCount >= songMaxDownloadAttempts {
+		s.DownloadState = SongDownloadStateFailedBackoff
+		s.DownloadRetryCount = 0
+		s.DownloadBackoffTime = time.Now().Add(songMaxDownloadAttemptsBackoffDuration)
+	}
+}
+
+// RegisterDownloadSuccess stores the fileName and updates song DownloadState and related fields.
+// After running this, use s.SavedFileName for all further file operations.
+func (s *Song) RegisterDownloadSuccess(fileName string) {
+	s.SavedFileName = fileName
+	s.DownloadState = SongDownloadStateSuccess
+	s.DownloadRetryCount = 0
+	s.DownloadBackoffTime = time.UnixMilli(0)
+}
+
+// GetFileName returns the suggested file name for this song
+func (s *Song) GetFileName() string {
+	return fmt.Sprintf("%s [%s].%s", s.sanitizedTitle(), s.ID, downloader.SongFileExtension)
 }
 
 func (s *Song) resetDeletionMargin() {
@@ -116,9 +182,4 @@ func (s *Song) sanitizedTitle() string {
 	title = strings.ReplaceAll(title, "*", replacementChar)
 
 	return title
-}
-
-// RegisterSavedFileName creates the song file name and stores it in the s.SavedFileName field.
-func (s *Song) RegisterSavedFileName() {
-	s.SavedFileName = fmt.Sprintf("%s [%s].%s", s.sanitizedTitle(), s.ID, downloader.SongFileExtension)
 }
