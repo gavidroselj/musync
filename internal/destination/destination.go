@@ -15,6 +15,9 @@ type Destination interface {
 	// FileExists returns whether a file with the provided fileName exists.
 	FileExists(fileName string) (bool, error)
 
+	// ListFiles returns the filenames at the provided directory.
+	ListFiles(dir string) ([]string, error)
+
 	// CreateFile writes the provided data to the provided fileName.
 	CreateFile(fileName string, data []byte) error
 
@@ -27,6 +30,10 @@ type TestDestination struct{}
 
 func (td *TestDestination) FileExists(fileName string) (bool, error) {
 	return true, nil
+}
+
+func (td *TestDestination) ListFiles(dir string) ([]string, error) {
+	return []string{}, nil
 }
 
 func (td *TestDestination) CreateFile(fileName string, data []byte) error {

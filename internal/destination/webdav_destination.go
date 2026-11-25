@@ -45,6 +45,21 @@ func (wd *WebdavDestination) FileExists(name string) (bool, error) {
 	return true, nil
 }
 
+func (wd *WebdavDestination) ListFiles(dir string) ([]string, error) {
+	entries, err := wd.client.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	results := []string{}
+
+	for _, entry := range entries {
+		results = append(results, entry.Name())
+	}
+
+	return results, nil
+}
+
 func (wd *WebdavDestination) CreateFile(name string, data []byte) error {
 	// Abort if file already exists
 	exists, err := wd.FileExists(name)

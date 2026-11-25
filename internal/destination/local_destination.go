@@ -39,6 +39,25 @@ func (ld *LocalDestination) FileExists(fileName string) (bool, error) {
 	return true, nil
 }
 
+func (ld *LocalDestination) ListFiles(dir string) ([]string, error) {
+	dirFile, err := ld.root.Open(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := dirFile.ReadDir(0)
+	if err != nil {
+		return nil, err
+	}
+
+	results := []string{}
+	for _, entry := range entries {
+		results = append(results, entry.Name())
+	}
+
+	return results, nil
+}
+
 func (ld *LocalDestination) CreateFile(fileName string, data []byte) error {
 	// Abort if file already exists
 	exists, err := ld.FileExists(fileName)
