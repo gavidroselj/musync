@@ -26,8 +26,22 @@ func NewLocalDestination(logger *slog.Logger, rootPath string) (*LocalDestinatio
 	return ld, nil
 }
 
+func (ld *LocalDestination) ensureDestination(dir string) error {
+	err := ld.root.MkdirAll(dir, dirMode)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (ld *LocalDestination) FileExists(fileName string) (bool, error) {
-	_, err := ld.root.Stat(fileName)
+	err := ld.ensureDestination(path.Dir(fileName))
+	if err != nil {
+		return false, err
+	}
+
+	_, err = ld.root.Stat(fileName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
@@ -39,7 +53,36 @@ func (ld *LocalDestination) FileExists(fileName string) (bool, error) {
 	return true, nil
 }
 
+func (ld *LocalDestination) ListFiles(dir string) ([]string, error) {
+	err := ld.ensureDestination(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	dirFile, err := ld.root.Open(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := dirFile.ReadDir(0)
+	if err != nil {
+		return nil, err
+	}
+
+	results := []string{}
+	for _, entry := range entries {
+		results = append(results, entry.Name())
+	}
+
+	return results, nil
+}
+
 func (ld *LocalDestination) CreateFile(fileName string, data []byte) error {
+	err := ld.ensureDestination(path.Dir(fileName))
+	if err != nil {
+		return err
+	}
+
 	// Abort if file already exists
 	exists, err := ld.FileExists(fileName)
 	if err != nil {
@@ -47,11 +90,6 @@ func (ld *LocalDestination) CreateFile(fileName string, data []byte) error {
 	}
 	if exists {
 		return ErrFileExists
-	}
-
-	err = ld.root.MkdirAll(path.Dir(fileName), dirMode)
-	if err != nil {
-		return err
 	}
 
 	err = ld.root.WriteFile(fileName, data, fileMode)

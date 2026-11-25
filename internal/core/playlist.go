@@ -237,27 +237,49 @@ func (p *Playlist) downloadIfAvailable() ProcessResult {
 }
 
 func (p *Playlist) validateFiles() {
+	existingFiles, err := p.destination.ListFiles(p.Name)
+	if err != nil {
+		p.logger.Error("Failed to validate files at destination", "err", err)
+		return
+	}
+
+	var okFiles, lostFiles, foundFiles, missingFiles int
+
 	for _, song := range p.Songs {
 		if song.SavedFileName == "" {
 			// Song is not downloaded yet, skip
 			continue
 		}
 
-		fileName := p.songPath(song)
-		exists, err := p.destination.FileExists(fileName)
-		if err != nil {
-			p.logger.Error("Failed to check whether file exists", "fileName", fileName, "err", err)
-			continue
-		}
+		exists := slices.Contains(existingFiles, song.SavedFileName)
 
 		if exists {
+			if song.DownloadState == SongDownloadStateSuccess {
+				// File existed before
+				okFiles++
+			} else {
+				// File was missing but is back
+				foundFiles++
+			}
+
 			song.DownloadState = SongDownloadStateSuccess
+
 		} else {
-			p.logger.Warn("Expected file is missing", "fileName", fileName, "id", song.ID)
+			if song.DownloadState == SongDownloadStateMissing {
+				// File was missing before
+				missingFiles++
+			} else {
+				// File existed but was lost
+				lostFiles++
+			}
+
+			p.logger.Warn("Expected file is missing", "fileName", song.SavedFileName, "id", song.ID)
 			song.DownloadState = SongDownloadStateMissing
 			// TODO: Figure out how to handle missing files
 		}
 	}
+
+	p.logger.Info("Validated files at destination", "okFiles", okFiles, "newlyLostFiles", lostFiles, "newlyFoundFiles", foundFiles, "missingFiles", missingFiles)
 }
 
 func (p *Playlist) songPath(song *Song) string {
