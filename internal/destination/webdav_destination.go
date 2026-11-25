@@ -32,8 +32,22 @@ func NewWebdavDestination(logger *slog.Logger, rootURL, user, password string) (
 	return ld, nil
 }
 
+func (wd *WebdavDestination) ensureDestination(dir string) error {
+	err := wd.client.MkdirAll(dir, dirMode)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (wd *WebdavDestination) FileExists(name string) (bool, error) {
-	_, err := wd.client.Stat(name)
+	err := wd.ensureDestination(path.Dir(name))
+	if err != nil {
+		return false, err
+	}
+
+	_, err = wd.client.Stat(name)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), fileNotExistStatPrefix) {
 			return false, nil
@@ -46,6 +60,11 @@ func (wd *WebdavDestination) FileExists(name string) (bool, error) {
 }
 
 func (wd *WebdavDestination) ListFiles(dir string) ([]string, error) {
+	err := wd.ensureDestination(dir)
+	if err != nil {
+		return nil, err
+	}
+
 	entries, err := wd.client.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -61,6 +80,11 @@ func (wd *WebdavDestination) ListFiles(dir string) ([]string, error) {
 }
 
 func (wd *WebdavDestination) CreateFile(name string, data []byte) error {
+	err := wd.ensureDestination(path.Dir(name))
+	if err != nil {
+		return err
+	}
+
 	// Abort if file already exists
 	exists, err := wd.FileExists(name)
 	if err != nil {
@@ -68,11 +92,6 @@ func (wd *WebdavDestination) CreateFile(name string, data []byte) error {
 	}
 	if exists {
 		return ErrFileExists
-	}
-
-	err = wd.client.MkdirAll(path.Dir(name), dirMode)
-	if err != nil {
-		return err
 	}
 
 	err = wd.client.Write(name, data, fileMode)
